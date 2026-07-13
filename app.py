@@ -645,5 +645,4 @@ if __name__ == "__main__":
         server_name="0.0.0.0",
         server_port=port,
         mcp_server=True,
-        ssr=False,  # HF Spaces 容器没 Node.js,关 SSR
     )
