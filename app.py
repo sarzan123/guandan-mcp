@@ -25,6 +25,18 @@ from guandan_model.combinations import SUPPORTED_TYPES, Combinations
 from guandan_model.dealer import Dealer
 from guandan_model.stats import Stats
 
+# HF ZeroGPU Spaces 启动时要求至少一个 @spaces.GPU 装饰函数。
+# 此桩函数仅用于通过 ZeroGPU 健康检查,不被任何 MCP / UI 路径调用。
+try:
+    import spaces
+
+    @spaces.GPU(duration=1)
+    def _zero_gpu_healthcheck() -> str:
+        """ZeroGPU 启动健康检查占位 — 不被任何 MCP 路径调用。"""
+        return "ok"
+except ImportError:
+    pass  # 非 ZeroGPU 环境(CPU / 纯 Docker)不需要此装饰器
+
 # ---------- 15 牌型中英文映射 ----------
 
 CN_NAME: dict[str, str] = {
