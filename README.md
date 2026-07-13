@@ -3,23 +3,23 @@ title: Guandan MCP
 emoji: 🃏
 colorFrom: blue
 colorTo: green
-sdk: gradio
-sdk_version: 6.20.0
-python_version: '3.12'
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: false
 license: mit
 ---
 
 # 掼蛋发牌模型 — Hugging Face Spaces MCP Server
 
-把本目录推到 Hugging Face Spaces (Gradio SDK) 即得到一个公开的 MCP 端点，
+把本目录推到 Hugging Face Spaces (Docker SDK) 即得到一个公开的 MCP 端点，
 朋友的 Claude Code / OpenCode / Hermes Agent / Cline / Cursor 等智能体
 可以直接调用本服务回答掼蛋问题。
 
 > 服务名:掼蛋发牌模型 v0.5
 > 端点:`https://sarzan123-guandan-model.hf.space/gradio_api/mcp/`
 > 协议:Model Context Protocol (MCP) over HTTP
+
+> **架构**:Docker SDK 自带 `python:3.12-slim`,不用 HF 的 ZeroGPU 调度器,自然跑 CPU,装 Gradio 5.x。
 
 ---
 
