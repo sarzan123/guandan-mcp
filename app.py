@@ -469,9 +469,7 @@ def _interpret_corr(x: str, y: str, r: float) -> str:
 
 def build_demo() -> gr.Blocks:
     """构建 Gradio Blocks demo,每个函数即一个 MCP tool。"""
-    demo = gr.Blocks(title="掼蛋发牌模型 v0.5")
-    with demo:
-        demo.theme = gr.themes.Soft()
+    with gr.Blocks(title="掼蛋发牌模型 v0.5") as demo:
         gr.Markdown(
             "# 🎴 掼蛋发牌模型 v0.5\n"
             "MCP 服务(给智能体用) + Web UI(给人类用)。\n"
@@ -646,5 +644,6 @@ if __name__ == "__main__":
     demo.launch(
         server_name="0.0.0.0",
         server_port=port,
+        theme=gr.themes.Soft(),
         mcp_server=True,
     )
