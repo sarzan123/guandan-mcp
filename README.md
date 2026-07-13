@@ -1,46 +1,68 @@
----
-title: Guandan MCP
-emoji: 🃏
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
-license: mit
----
+# 掼蛋发牌模型 v0.5 — MCP Server (Render 部署)
 
-# 掼蛋发牌模型 — Hugging Face Spaces MCP Server
-
-把本目录推到 Hugging Face Spaces (Docker SDK) 即得到一个公开的 MCP 端点，
-朋友的 Claude Code / OpenCode / Hermes Agent / Cline / Cursor 等智能体
+公开 MCP 端点,朋友的 Claude Code / OpenCode / Hermes Agent / Cline / Cursor 等智能体
 可以直接调用本服务回答掼蛋问题。
 
-> 服务名:掼蛋发牌模型 v0.5
-> 端点:`https://sarzan123-guandan-model.hf.space/gradio_api/mcp/`
+> 服务:掼蛋发牌模型 v0.5
 > 协议:Model Context Protocol (MCP) over HTTP
-
-> **架构**:Docker SDK 自带 `python:3.12-slim`,不用 HF 的 ZeroGPU 调度器,自然跑 CPU,装 Gradio 5.x。
+> 平台:Render.com 免费 Docker Web Service
 
 ---
 
-## MCP 工具清单(12 个)
+## 公网 URL(部署完成后会形如下)
 
-| 工具 | 用途 | 关键参数 |
-|---|---|---|
-| `deal_hand` | 按种子发牌 | `seed`, `level_rank` |
-| `analyze_hand` | 单手牌 15 牌型识别 | `hand_text`, `level_rank` |
-| `analyze_deal` | 整副 deal 全属性分析 | `deal_json_text`, `with_combinations` |
-| `analyze_attribute` | 整副 deal 单属性查询 | `deal_json_text`, `attribute` |
-| `frequency` | 频率分布(基于 JSONL 样本) | `file_path`, `query` |
-| `contradiction` | 两牌型 Pearson 负相关 | `type_x`, `type_y`, `file_path` |
-| `top_correlations` | Top 负相关牌型对 | `threshold`, `top_n` |
-| `top_hand_types` | 高出现概率牌型 | `top_n` |
-| `list_牌型` | 15 牌型中英文 + 规则 | — |
-| `simulate_deals` | 批量生成 deal | `num_deals`, `base_seed` |
-| `parse_card` | 自然语言 → 内部代号 | `card_text` |
-| `render_card` | 内部代号 → 自然语言 | `code`, `chinese` |
+| 用途 | URL |
+|---|---|
+| Web UI(浏览器看) | https://guandan-mcp.onrender.com/ |
+| **MCP 端点**(智能体接)| https://guandan-mcp.onrender.com/gradio_api/mcp/ |
 
-详细输入/输出规范见 `app.py` 中每个函数的中文 docstring —— 智能体会读到这些 docstring。
+`guandan-mcp` 是 Render 默认按 service name 生成的子域名,可在 Render dashboard 改名。
+
+---
+
+## 一键部署步骤
+
+### 0. 前置(5 分钟)
+
+- 一个 **GitHub 账号**(用来托管本仓库 + Render 自动部署)
+- 一个 **Render.com 账号** → https://dashboard.render.com/register(用 GitHub 登录)
+
+### 1. 把代码推到 GitHub
+
+```bash
+# 1) 在 GitHub 网页创建一个新 repo(空仓库)
+#    名:guandan-mcp
+#    描述:GuanDan MCP server (Gradio 5.x + 12 tools)
+
+# 2) 把本地 deploy/ 切换 remote 到 GitHub,然后 push
+cd C:/code/掼蛋模型/deploy
+git remote remove origin
+git remote add origin https://github.com/sarzan123/guandan-mcp.git
+git push -u origin main
+```
+
+> 这一步会把我之前给你的 8 个 fix commits + 这次 Render 改动一并推上去。
+> Render 看不到 HF 了 — HF Space 我建议手动从 dashboard 删除。
+
+### 2. Render 接 GitHub 部署
+
+1. 打开 https://dashboard.render.com/blueprints
+2. 点 **New Blueprint Instance**
+3. 选 **GitHub**(第一次会要求授权)
+4. 选你刚 push 的 `sarzan123/guandan-mcp` repo
+5. Render 自动读 `render.yaml` → 显示 1 个 service(guandan-mcp, free, Docker)
+6. 点 **Apply** → 开始构建
+
+### 3. 等构建
+
+- 第一次构建要拉 `python:3.12-slim` + 装 Gradio 5.x ≈ 3-5 分钟
+- Logs 在 Render dashboard service 页面
+- 构建成功后,Render 自动给个 URL,例如 `https://guandan-mcp.onrender.com/`
+
+### 4. 测试
+
+浏览器打开那个 URL,看到 Gradio Web UI = 部署成功。
+MCP 端点:`https://guandan-mcp.onrender.com/gradio_api/mcp/`
 
 ---
 
@@ -48,56 +70,67 @@ license: mit
 
 ### Claude Code
 
-在 `~/.claude/mcp_servers.json` (或项目根的 `.mcp.json`) 添加:
+`~/.claude/mcp_servers.json`(或项目根的 `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
     "guandan": {
-      "url": "https://sarzan123-guandan-model.hf.space/gradio_api/mcp/",
+      "url": "https://guandan-mcp.onrender.com/gradio_api/mcp/",
       "transport": "streamable-http"
     }
   }
 }
 ```
 
-重启 Claude Code,新会话里就能看到 `guandan` 提供的 12 个工具。
+### OpenCode / Hermes Agent / Cline / Cursor
 
-### OpenCode
-
-`~/.config/opencode/config.yaml`:
-
-```yaml
-mcp:
-  guandan:
-    url: https://sarzan123-guandan-model.hf.space/gradio_api/mcp/
-    transport: streamable-http
-```
-
-### Hermes Agent / Cline / Cursor
-
-均按其官方文档添加一个 "Streamable HTTP" MCP server,URL 填上面的端点即可。
+URL 替换成上面那行即可。具体 YAML/JSON 格式参各自文档。
 
 ---
 
-## 示例问题(朋友可直接问智能体)
+## MCP 工具清单(12 个)
 
-- "我有一手牌 HA SA DA CA H3 H4 H5 H6 H7,有哪些牌型?"
-- "4 张炸的概率是多少?基于内置 3000 局样本"
-- "哪些牌型互斥最强?"
-- "按种子 42 给我发一副牌,然后分析每玩家的炸弹数"
-- "用中文告诉我 15 种牌型的规则"
+| 工具 | 用途 |
+|---|---|
+| `deal_hand` | 按种子发牌 |
+| `analyze_hand` | 单手牌 15 牌型识别 |
+| `analyze_deal` | 整副 deal 全属性分析 |
+| `analyze_attribute` | 整副 deal 单属性查询 |
+| `frequency` | 频率分布(基于 JSONL 样本) |
+| `contradiction` | 两牌型 Pearson 负相关 |
+| `top_correlations` | Top 负相关牌型对 |
+| `top_hand_types` | 高出现概率牌型 |
+| `list_牌型` | 15 牌型中英文 + 规则 |
+| `simulate_deals` | 批量生成 deal |
+| `parse_card` | 自然语言 → 内部代号 |
+| `render_card` | 内部代号 → 自然语言 |
+
+中文 docstring 在 `app.py`,智能体会直接读到。
 
 ---
 
-## 数据源说明
+## 免费层注意事项
 
-内置 3000 局样本 (`data/batch_3000.jsonl`, ~2.6 MB) 用于 `frequency` / `contradiction` / `top_correlations` / `top_hand_types`。
+- **Render 免费 Web Service 闲置 15 分钟后会休眠**;下次冷启动 ≈ 30 秒。
+- 给朋友发 URL 时,他们的智能体首次调用会有 30 秒左右延迟,之后实时。
+- 想全天候秒响应 → 升级 Render Starter($7/月,免睡)。
+- 防止休眠的小技巧:用 `cron-job.org`(免费)每 14 分钟 ping 一下 Web UI URL。
+
+---
+
+## 已知差异(从 HF Space 迁移)
+
+- 部署平台从 Hugging Face 改为 Render
+- 公开 URL 域名从 `.hf.space` 改为 `.onrender.com`
+- Gradio 版本 pin 仍是 `>=5.6,<6`,Dockerfile 用 `python:3.12-slim`
+- 不再有 ZeroGPU / `@spaces.GPU` 约束
+- 旧 HF Space 建议在 https://huggingface.co/settings/spaces 手动删除(腾配额)
 
 ---
 
 ## 版本与限制
 
-- v0.5 牌型识别 + 矛盾/频率统计;**Dealer 当前固定级牌为 2** (v0 限制)。
-- HF Spaces 免费层有 CPU 配额,3000 局统计约 2-3 秒,够用。
-- MCP 协议要求客户端支持 Streamable HTTP (Claude Code ≥ 1.0, OpenCode ≥ 0.4, Hermes Agent, Cline ≥ 3.5)。
+- v0.5 牌型识别 + 矛盾/频率统计;Dealer 当前固定级牌为 2。
+- 3000 局统计约 2-3 秒。
+- MCP 协议要求客户端支持 Streamable HTTP(Claude Code ≥ 1.0, OpenCode ≥ 0.4, Cline ≥ 3.5)。

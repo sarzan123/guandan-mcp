@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: guandan-mcp
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: GRADIO_SERVER_NAME
+        value: "0.0.0.0"
