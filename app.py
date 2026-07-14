@@ -88,10 +88,9 @@ DEFAULT_DEAL_JSON = json.dumps(
         "variant": "two-deck-fengrenpei",
         "level_rank": "2",
         "hands": {"0": ["HA", "SA", "DA", "CA"], "1": [], "2": [], "3": []},
-        "bottom": ["H2", "DQ", "SJ", "C9", "H9", "D5", "S5", "CT"],
         "wild_card": "H2",
         "wild_card_owner": "0",
-        "total_cards": 12,
+        "total_cards": 4,
     },
     ensure_ascii=False,
 )
@@ -101,16 +100,19 @@ DEFAULT_DEAL_JSON = json.dumps(
 
 
 def deal_hand(seed: int, level_rank: str = "2") -> dict:
-    """按种子发一手牌(4 玩家 + 8 底牌),返回完整 DealResult。
+    """按种子发一手牌(4 玩家各 27 张 = 108,无底牌),返回完整 DealResult。
+
+    v1.1:真实掼蛋规则 - 108 张全发,4 家各 27 张,wild_card_owner 必为某玩家。
+    v0 的 4×25+8=108 错误模型已删除(bottom 字段不再存在)。
 
     Args:
         seed: 整数种子(可重现)。常用值: 0, 1, 42, 100。
-        level_rank: 级牌等级,决定哪些牌是级牌(默认 "2",目前 v0 Dealer
+        level_rank: 级牌等级,决定哪些牌是级牌(默认 "2",目前 Dealer
             固定为 "2",非 "2" 会被忽略)。
 
     Returns:
-        dict: 包含 schema_version, seed, variant, level_rank, hands (4 玩家),
-              bottom (8 底牌), wild_card (红心配级牌), wild_card_owner (持有者),
+        dict: 包含 schema_version, seed, variant, level_rank, hands (4 玩家,
+              共 27×4=108), wild_card (红心配级牌), wild_card_owner (pid),
               total_cards (108)。
     """
     deal = Dealer.deal(seed=int(seed)).to_dict()
@@ -154,7 +156,7 @@ def analyze_hand(hand_text: str, level_rank: str = "2") -> dict:
 
 
 def analyze_deal(deal_json_text: str, with_combinations: bool = False) -> dict:
-    """分析一整副 deal(4 玩家 + 底牌),返回每玩家的所有属性。
+    """分析一整副 deal(4 玩家各 27 张,v1.1 无底牌),返回每玩家的所有属性。
 
     Args:
         deal_json_text: DealResult JSON 字符串(可用 deal_hand 生成)。
@@ -164,9 +166,10 @@ def analyze_deal(deal_json_text: str, with_combinations: bool = False) -> dict:
         dict: 包含
             - all_players: {pid -> {属性 -> 值}}
               属性: bomb_count, has_rocket, has_wild_card, joker_count,
-                   card_count, level_card_count, rank_histogram, combinations(可选)
+                   card_count (27), level_card_count, rank_histogram,
+                   combinations(可选)
             - wild_card: 红心配级牌(如 H2)
-            - wild_card_owner: 持有者 pid / "bottom"
+            - wild_card_owner: 持有者 pid("0".."3",v1.1 不再为 "bottom")
             - level_rank: 级牌
     """
     deal = json.loads(deal_json_text)

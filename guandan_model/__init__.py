@@ -16,7 +16,6 @@ from guandan_model.dealer import (  # noqa: E402, F401
     DealInvariantError,
     SCHEMA_VERSION,
     HAND_SIZE,
-    BOTTOM_SIZE,
     NUMBER_OF_PLAYERS,
 )
 from guandan_model.analyzer import Analyzer  # noqa: E402, F401

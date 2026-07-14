@@ -2,7 +2,7 @@
 
 每个属性支持两种粒度:
 - per_player: 返回 dict[pid -> 值]
-- per_hand : 返回 dict[pid -> 值] 但仅手牌(含 4 玩家 + bottom)
+- per_hand : 返回 dict[pid -> 值] 但仅手牌(4 玩家,v1.1 无底牌)
 - per_deal : 单值,跨全 deal 算(例如 wild_card_owner)
 """
 
@@ -27,7 +27,6 @@ class Analyzer:
             raise TypeError("Analyzer 需要 dict 或 DealResult")
         self.level_rank: str = self.deal.get("level_rank", "2")
         self.hands: dict[str, list[str]] = self.deal["hands"]
-        self.bottom: list[str] = self.deal["bottom"]
         self.wild_card: str = self.deal.get("wild_card", f"H{self.level_rank}")
         self.wild_card_owner: str | None = self.deal.get("wild_card_owner")
 

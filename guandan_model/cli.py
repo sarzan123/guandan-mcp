@@ -40,12 +40,10 @@ def _emit(data: Any, pretty: bool, chinese: bool) -> None:
         rendered_hands = {
             pid: [render(c, chinese=True) for c in hand] for pid, hand in data["hands"].items()
         }
-        rendered_bottom = [render(c, chinese=True) for c in data["bottom"]]
         rendered_wild = render(data["wild_card"], chinese=True)
         data = {
             **data,
             "hands": rendered_hands,
-            "bottom": rendered_bottom,
             "wild_card": rendered_wild,
         }
     indent = 2 if pretty else None

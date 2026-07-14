@@ -1,4 +1,10 @@
-"""发牌器:洗牌 / 发牌 / 结果封装。"""
+"""发牌器:洗牌 / 发牌 / 结果封装。
+
+掼蛋 v1.1 (修复 4×25+8 错误):
+- 108 张全部发给 4 家,每家 27 张,无底牌
+- 真实掼蛋规则里没有底牌;升级/拖拉机才用底牌
+- SCHEMA_VERSION 升 1.1.0(破坏性变更:删除 bottom 字段,wild_card_owner 不再取值 "bottom")
+"""
 
 from __future__ import annotations
 
@@ -9,12 +15,12 @@ from dataclasses import dataclass
 from guandan_model.cards import JOKER_CODES, RANKS, SUITS
 from guandan_model.deck import Deck
 
-# spec §3.5 与 §7.1:对外暴露的 schema 版本常量(agent 检查)
-SCHEMA_VERSION = "1.0.0"
+# spec §3.5 与 §7.1: 对外暴露的 schema 版本常量(agent 检查)
+# 1.1.0: 删 bottom 字段,4×27 发牌
+SCHEMA_VERSION = "1.1.0"
 
 NUMBER_OF_PLAYERS = 4
-HAND_SIZE = 25
-BOTTOM_SIZE = 8
+HAND_SIZE = 27
 LEVEL_RANK_DEFAULT = "2"
 WILD_CARD_CODE = f"H{LEVEL_RANK_DEFAULT}"  # "H2"
 VARIANT_DEFAULT = "two-deck-fengrenpei"
@@ -29,15 +35,14 @@ class DealResult:
     seed: int
     variant: str
     level_rank: str
-    hands: dict[str, list[str]]  # {"0": [...], "1": [...], ...}
-    bottom: list[str]
+    hands: dict[str, list[str]]  # {"0": [...], "1": [...], ...} — 每家 27 张
     wild_card: str  # "H2"
-    wild_card_owner: str | None  # 首位持 H2 玩家 "0".."3" / "bottom" / None;只报一位 owner
+    wild_card_owner: str | None  # 首位持 H2 的玩家 "0".."3";v1.1 永远在玩家手里
     total_cards: int = 108
 
     def __post_init__(self) -> None:
-        # 由 hands + bottom 推导,避免外部传入与实际不一致
-        total = sum(len(h) for h in self.hands.values()) + len(self.bottom)
+        # 由 hands 推导(避免外部传入与实际不一致)
+        total = sum(len(h) for h in self.hands.values())
         object.__setattr__(self, "total_cards", total)
 
     def to_dict(self) -> dict:
@@ -47,7 +52,6 @@ class DealResult:
             "variant": self.variant,
             "level_rank": self.level_rank,
             "hands": {k: list(v) for k, v in self.hands.items()},
-            "bottom": list(self.bottom),
             "wild_card": self.wild_card,
             "wild_card_owner": self.wild_card_owner,
             "total_cards": self.total_cards,
@@ -79,26 +83,25 @@ class Dealer:
     def deal(cls, seed: int, *, variant: str = VARIANT_DEFAULT) -> DealResult:
         """按指定 seed 洗牌并发牌,返回 DealResult。
 
+        v1.1: 4 玩家各 27 张 = 108(无底牌,wild_card_owner 永不为 "bottom")。
         v0 仅支持两副牌-逢人配(variant="two-deck-fengrenpei")。
-        分配规则:4 玩家各 25 张 + 8 张底牌 = 108。
-        wild_card = 红心级牌(H2),owner 为首先持 H2 的玩家;若无人持有则为底牌。
         """
         if variant != VARIANT_DEFAULT:
-            raise ValueError(f"v0 仅支持 {VARIANT_DEFAULT},收到 {variant}")
+            raise ValueError(f"当前仅支持 {VARIANT_DEFAULT},收到 {variant}")
         rng = random.Random(seed)
         deck = Deck()
         cls.shuffle(deck, rng=rng)
         cards = deck.cards
 
-        # 分牌
+        # 4×27 平均分配(108 / 4 = 27)
         hands: dict[str, list[str]] = {str(i): [] for i in range(NUMBER_OF_PLAYERS)}
         for pid in range(NUMBER_OF_PLAYERS):
             hands[str(pid)] = cards[pid * HAND_SIZE : (pid + 1) * HAND_SIZE]
-        bottom = cards[NUMBER_OF_PLAYERS * HAND_SIZE : NUMBER_OF_PLAYERS * HAND_SIZE + BOTTOM_SIZE]
 
         # 不变量自检:总数 108,且多重集合等于规范两副牌
-        total = sum(len(h) for h in hands.values()) + len(bottom)
-        flat = [c for h in hands.values() for c in h] + list(bottom)
+
+        total = sum(len(h) for h in hands.values())
+        flat = [c for h in hands.values() for c in h]
         canonical: list[str] = []
         for _ in range(2):
             for s in SUITS:
@@ -108,21 +111,20 @@ class Dealer:
         if total != 108 or Counter(flat) != Counter(canonical):
             raise DealInvariantError("发牌违反总数/多重集合不变量")
 
-        # wild card 归属(取首个含 H2 的玩家,或 "bottom")
+        # wild card 归属(取首个含 H2 的玩家;108 已全发,必在某个玩家手里)
         owner: str | None = None
         for pid in range(NUMBER_OF_PLAYERS):
             if WILD_CARD_CODE in hands[str(pid)]:
                 owner = str(pid)
                 break
-        if owner is None and WILD_CARD_CODE in bottom:
-            owner = "bottom"
+        if owner is None:
+            raise DealInvariantError("wild_card 在 108 张牌中找不到持有者(发牌不变量违反)")
 
         return DealResult(
             seed=seed,
             variant=variant,
             level_rank=LEVEL_RANK_DEFAULT,
             hands=hands,
-            bottom=bottom,
             wild_card=WILD_CARD_CODE,
             wild_card_owner=owner,
         )

@@ -3,9 +3,11 @@
 公开 MCP 端点,朋友的 Claude Code / OpenCode / Hermes Agent / Cline / Cursor 等智能体
 可以直接调用本服务回答掼蛋问题。
 
-> 服务:掼蛋发牌模型 v0.5
+> 服务:掼蛋发牌模型 v1.1
 > 协议:Model Context Protocol (MCP) over HTTP
 > 平台:Render.com 免费 Docker Web Service
+>
+> **v1.1 修复**: 真实掼蛋 = 4×27=108(无底牌)。v0 的 4×25+8 错误模型已删除。
 
 ---
 
