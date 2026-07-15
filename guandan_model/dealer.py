@@ -1,9 +1,9 @@
 """发牌器:洗牌 / 发牌 / 结果封装。
 
-掼蛋 v1.1 (修复 4×25+8 错误):
-- 108 张全部发给 4 家,每家 27 张,无底牌
-- 真实掼蛋规则里没有底牌;升级/拖拉机才用底牌
-- SCHEMA_VERSION 升 1.1.0(破坏性变更:删除 bottom 字段,wild_card_owner 不再取值 "bottom")
+掼蛋 v1.2:
+- 108 张全部发给 4 家,每家 27 张,无底牌(v1.1 修复:真实掼蛋无底牌)
+- 牌型组合不再包含三带一(`triple_with_single`),并保留 v1.1 的发牌规则
+- SCHEMA_VERSION 1.2.0(破坏性变更:v1.1 删 bottom、v1.2 减 1 种牌型)
 """
 
 from __future__ import annotations
@@ -16,8 +16,8 @@ from guandan_model.cards import JOKER_CODES, RANKS, SUITS
 from guandan_model.deck import Deck
 
 # spec §3.5 与 §7.1: 对外暴露的 schema 版本常量(agent 检查)
-# 1.1.0: 删 bottom 字段,4×27 发牌
-SCHEMA_VERSION = "1.1.0"
+# 1.2.0: 删 triple_with_single 牌型(从 15 种减到 14 种);保留 v1.1 的 4×27=108 + 无底牌
+SCHEMA_VERSION = "1.2.0"
 
 NUMBER_OF_PLAYERS = 4
 HAND_SIZE = 27
@@ -99,7 +99,6 @@ class Dealer:
             hands[str(pid)] = cards[pid * HAND_SIZE : (pid + 1) * HAND_SIZE]
 
         # 不变量自检:总数 108,且多重集合等于规范两副牌
-
         total = sum(len(h) for h in hands.values())
         flat = [c for h in hands.values() for c in h]
         canonical: list[str] = []

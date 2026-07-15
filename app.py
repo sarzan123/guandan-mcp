@@ -48,7 +48,6 @@ CN_NAME: dict[str, str] = {
     "bomb_6": "6张炸",
     "bomb_7": "7张炸",
     "bomb_8": "8张炸",
-    "triple_with_single": "三带一",
     "triple_with_pair": "三带二",
     "straight": "顺子",
     "tube": "连对",
@@ -62,7 +61,7 @@ CN_TO_EN: dict[str, str] = {v: k for k, v in CN_NAME.items()}
 # ---------- 牌型名校验 ----------
 
 VALID_TYPE_NAMES = (
-    "15 种牌型(中文): "
+    "14 种牌型(中文): "
     + ", ".join(CN_NAME[k] for k in SUPPORTED_TYPES)
     + " | (英文): "
     + ", ".join(SUPPORTED_TYPES)
@@ -122,7 +121,7 @@ def deal_hand(seed: int, level_rank: str = "2") -> dict:
 
 
 def analyze_hand(hand_text: str, level_rank: str = "2") -> dict:
-    """分析一手牌(空格分隔的牌代号),返回 15 种牌型识别结果。
+    """分析一手牌(空格分隔的牌代号),返回 14 种牌型识别结果。
 
     牌代号格式: 花色字母(S/H/D/C) + 数字(2-9/T/J/Q/K/A),
     大小王为 JOKER_S(小王) / JOKER_B(大王)。
@@ -135,7 +134,7 @@ def analyze_hand(hand_text: str, level_rank: str = "2") -> dict:
     Returns:
         dict: 包含
             - hand: 解析后的牌列表
-            - count_all: 15 种牌型的实例数(中文名)
+            - count_all: 14 种牌型的实例数(中文名)
             - count_bombs: 炸弹总数(bomb_4..8 + 天王炸)
             - has_rocket: 是否同时持有大小王
             - hand_size: 牌张数
@@ -346,10 +345,10 @@ def top_hand_types(top_n: int = 10) -> list[dict]:
 
 
 def list_牌型() -> dict:
-    """返回 15 种牌型的中英文名 + 简要规则,供智能体理解。
+    """返回 14 种牌型的中英文名 + 简要规则,供智能体理解。
 
     Returns:
-        dict: {"15_牌型": [{"英文": "single", "中文": "单张", "规则": "..."}, ...]}
+        dict: {"14_牌型": [{"英文": "single", "中文": "单张", "规则": "..."}, ...]}
     """
     rules = {
         "single": "任意 1 张牌",
@@ -360,15 +359,14 @@ def list_牌型() -> dict:
         "bomb_6": "同 rank × 6",
         "bomb_7": "同 rank × 7",
         "bomb_8": "同 rank × 8(2 副牌上限)",
-        "triple_with_single": "三张 + 任意单张",
-        "triple_with_pair": "三张 + 任意对子",
+        "triple_with_pair": "三张 + 1 个对子",
         "straight": "5+ 连续 rank(3..A),含 A2345 最小",
         "tube": "3+ 连续对(连对)",
-        "plate": "2+ 连续三张(钢板)",
+        "plate": "2+ 连续三张(钢板,不带翅膀)",
         "straight_flush": "5+ 同花连续(同花顺)",
         "joker_bomb": "同时持有 4 张大小王(天王炸)",
     }
-    return {"15_牌型": [{"英文": k, "中文": CN_NAME[k], "规则": rules[k]} for k in SUPPORTED_TYPES]}
+    return {"14_牌型": [{"英文": k, "中文": CN_NAME[k], "规则": rules[k]} for k in SUPPORTED_TYPES]}
 
 
 def simulate_deals(num_deals: int, base_seed: int = 0) -> dict:

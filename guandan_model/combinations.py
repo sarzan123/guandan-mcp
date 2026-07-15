@@ -1,11 +1,14 @@
 """掼蛋牌型识别。
 
-v0.5:基于手牌,识别/统计掼蛋标准牌型。
-- 不做 wild substitution(H2 在炸弹中排除,在其他牌型中视为普通 rank "2" 牌)
+v1.2:
+- 去掉不存在的「三带一」(triple_with_single):掼蛋只有三张或三带二。
+  钢板不能带翅膀,三带只能带 1 个对子。
+- 不做 wild substitution:虽然红心级牌(H2)按游戏规则是百搭,实际牌型计数时
+  仍按其本身 rank 处理(不模拟 wild 指派)。出牌阶段的百搭逻辑不在本模块范围。
 - "count" 是「最大 disjoint 数」(例:AAAA = 4 single + 2 pair + 1 bomb_4)
-- v0.5 task 1:single / pair / triple / bomb_4..8
-- v0.5 task 2:triple_with_single / triple_with_pair / straight / tube / plate
-- v0.5 task 3:straight_flush / joker_bomb
+- task 1:single / pair / triple / bomb_4..8
+- task 2:triple_with_pair / straight / tube / plate
+- task 3:straight_flush / joker_bomb
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ STRAIGHT_RANKS: tuple[str, ...] = (
     "A",
 )
 
-# v0.5 范围内支持的牌型
+# v1.2 支持的牌型(14 种):已删三带一(v0.5 错误加入);钢板不带翅膀;三带只能带 1 对
 SUPPORTED_TYPES: tuple[str, ...] = (
     "single",
     "pair",
@@ -41,7 +44,6 @@ SUPPORTED_TYPES: tuple[str, ...] = (
     "bomb_6",
     "bomb_7",
     "bomb_8",
-    "triple_with_single",
     "triple_with_pair",
     "straight",
     "tube",
@@ -59,7 +61,7 @@ class Combination:
       - 绝大多数类型 = 该牌型所用牌张数(single=1, pair=2, triple=3, bomb_n=n)
       - straight / tube / plate = 连续 rank 的「长度」,不是牌张数
         (straight: 1 张/rank; tube: 2 张/rank; plate: 3 张/rank)
-      - triple_with_single=4, triple_with_pair=5
+      - triple_with_pair=5
     """
 
     type: str
@@ -87,7 +89,7 @@ class Combinations:
     def count(self, type_name: str) -> int:
         """单牌型计数。"""
         if type_name not in SUPPORTED_TYPES:
-            raise ValueError(f"v0.5 不支持牌型 {type_name!r};支持: {SUPPORTED_TYPES}")
+            raise ValueError(f"v1.2 不支持牌型 {type_name!r};支持: {SUPPORTED_TYPES}")
         return len(self.find(type_name))
 
     def count_all(self) -> dict[str, int]:
@@ -104,8 +106,7 @@ class Combinations:
     def find(self, type_name: str) -> list[Combination]:
         """列举指定牌型的所有 disjoint 实例。
 
-        注意:triple_with_single / triple_with_pair 返回笛卡尔积,实例数可能较大
-        (hand 中 N 个 triple × M 张非 triple 牌 → N×M 个 Combination)。
+        注意:triple_with_pair 返回笛卡尔积(triple × pair),实例数可能较大。
         """
         if type_name == "single":
             return self._find_singles()
@@ -116,8 +117,6 @@ class Combinations:
         if type_name in ("bomb_4", "bomb_5", "bomb_6", "bomb_7", "bomb_8"):
             n = int(type_name.split("_")[1])
             return self._find_bombs(n)
-        if type_name == "triple_with_single":
-            return self._find_triple_with_single()
         if type_name == "triple_with_pair":
             return self._find_triple_with_pair()
         if type_name == "straight":
@@ -130,7 +129,7 @@ class Combinations:
             return self._find_straight_flush()
         if type_name == "joker_bomb":
             return self._find_joker_bomb()
-        raise ValueError(f"v0.5 不支持牌型 {type_name!r}")
+        raise ValueError(f"v1.2 不支持牌型 {type_name!r}")
 
     def find_all(self) -> list[Combination]:
         """列举所有 supported 牌型(disjoint,按声明顺序)。"""
@@ -192,44 +191,7 @@ class Combinations:
                 out.append(Combination(type=f"bomb_{n}", primary_rank=rank, cards=cards, length=n))
         return out
 
-    # ---------- 三带单/三带对 ----------
-
-    def _find_triple_with_single(self) -> list[Combination]:
-        """triple × 任意非 triple 牌 的笛卡尔积。count = num_triple × (手牌数 - 3*num_triple)。
-
-        任意 single = 任何不属于 triple 的牌:其它 rank 的单张、pair 中剩下的两张、joker。
-        """
-        triples = self._find_triples()
-        if not triples:
-            return []
-        # 计算每个 triple 实际"用掉"了几张牌——所有 triples 互不重叠(disjoint),
-        # 所以每个 triple 占 3 张,total = 3 * num_triples。
-        # "非 triple" 牌 = 手牌 - 所有 triple 用掉的牌。
-        used_per_rank: dict[str, int] = Counter()
-        for t in triples:
-            used_per_rank[t.primary_rank] += 3
-        other_cards: list[str] = []
-        for c in self.hand:
-            if c in JOKER_CODES:
-                other_cards.append(c)
-                continue
-            r = c[1:]
-            if used_per_rank.get(r, 0) > 0:
-                used_per_rank[r] -= 1
-                continue
-            other_cards.append(c)
-        out: list[Combination] = []
-        for t in triples:
-            for s in other_cards:
-                out.append(
-                    Combination(
-                        type="triple_with_single",
-                        primary_rank=t.primary_rank,
-                        cards=t.cards + (s,),
-                        length=4,
-                    )
-                )
-        return out
+    # ---------- 三带对 ----------
 
     def _find_triple_with_pair(self) -> list[Combination]:
         """triple × pair (pair rank ≠ triple rank) 的笛卡尔积。count = num_triple × num_pair。
